@@ -5,18 +5,18 @@ import path from 'path';
 import { convertToWav } from './processAudio';
 import os from 'os';
 import { v4 as uuidv4 } from 'uuid';
+import e from 'express';
+import { error } from 'console';
 
 
 const TIMEOUT = 300000; // Timeout in milliseconds (5 minutes)
 
 export async function sendToService(filePath: string, maxRetries = 15, retryDelay = 20000, url:string, headers:{}): Promise<string> {
     if (!filePath) {
-        console.log('File path is required');
-        return 'file path is required';
+        throw error('file path is required');
     }
     if (!url) {
-        console.log('URL is required');
-        return 'url is required';
+        throw error('URL is required');
     }
     let retries = 0;
     
