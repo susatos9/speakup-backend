@@ -1,15 +1,15 @@
 #!/bin/bash
 
 # Configuration variables
-PROJECT_ID="speakup-backend"  # Updated with your actual project ID
-SERVICE_NAME="speakup-node"
+PROJECT_ID="speakup-gemini"  # Updated with your actual project ID
+SERVICE_NAME="speakup-backend"
 REGION="asia-southeast1"
 IMAGE_NAME="gcr.io/${PROJECT_ID}/${SERVICE_NAME}"
 
-# Step 1: Authenticate with Google Cloud
-echo "Authenticating with Google Cloud..."
-gcloud auth login
-gcloud auth configure-docker
+# # Step 1: Authenticate with Google Cloud
+# echo "Authenticating with Google Cloud..."
+# gcloud auth login
+# gcloud auth configure-docker
 
 # Step 2: Build the Docker image
 echo "Building Docker image..."

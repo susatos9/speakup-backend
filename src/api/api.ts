@@ -238,16 +238,23 @@ router.post('/upload-audio', upload.single('audio'), async (req, res): Promise<v
         return;
       }
       let filler,grammar,pitch,formality;
+      
+      // Use req.file.path directly as it's relative to the project root
+      const filePath = req.file.path; 
+
       filler = await sendToService(
-        path.join(__dirname, '../..', req.file.path),
+        filePath,
         15, // maxRetries
         20000, // retryDelay
-        'https://api.example.com/endpoint', // Replace with your actual URL
+        'https://pitch-615384299938.asia-southeast1.run.app/analyze', // Replace with your actual URL
         {
-          'Content-Type': req.file.mimetype,
-      });
+            filename: 'audio.wav',
+            contentType: 'multipart/form-data',
+        });
+      console.log(filler);
+    
       grammar = await sendToService(
-        path.join(__dirname, '../..', req.file.path),
+        filePath,
         15, // maxRetries
         20000, // retryDelay
         'https://api.example.com/endpoint', // Replace with your actual URL
@@ -255,7 +262,7 @@ router.post('/upload-audio', upload.single('audio'), async (req, res): Promise<v
           'Content-Type': req.file.mimetype,
       });
       pitch = await sendToService(
-        path.join(__dirname, '../..', req.file.path),
+        filePath,
         15, // maxRetries
         20000, // retryDelay
         'https://api.example.com/endpoint', // Replace with your actual URL
@@ -263,7 +270,7 @@ router.post('/upload-audio', upload.single('audio'), async (req, res): Promise<v
           'Content-Type': req.file.mimetype,
       });
       formality = await sendToService(
-        path.join(__dirname, '../..', req.file.path),
+        filePath,
         15, // maxRetries
         20000, // retryDelay
         'https://api.example.com/endpoint', // Replace with your actual URL
@@ -272,21 +279,39 @@ router.post('/upload-audio', upload.single('audio'), async (req, res): Promise<v
       });
 
       // how to load dummy data from a json file
-      const dummyData = fs.readFileSync(path.join(__dirname, '../utils/dummy', 'dummy-data.json'), 'utf-8');
+      // Construct path to dummy data relative to __dirname
+      const dummyDataPath = path.join(__dirname, '../utils/dummy/dummy-data.json');
+      const dummyData = fs.readFileSync(dummyDataPath, 'utf-8');
       const parsedData = JSON.parse(dummyData);
-      const randomIndex = Math.floor(Math.random() * parsedData.length);
+      // Ensure parsedData is treated as an array or object as expected
+      // Assuming it's an object with keys "0", "1", "2" based on the file content
+      const keys = Object.keys(parsedData);
+      const randomIndex = Math.floor(Math.random() * keys.length);
+      const randomKey = keys[randomIndex];
+      const randomDummyEntry = parsedData[randomKey];
+
 
       let result = {
         timestamp: new Date().toISOString(),
         excerciseID: req.body.excerciseID,
-        filler: filler ? filler : parsedData[randomIndex].filler,
-        grammar: grammar ? grammar : parsedData[randomIndex].grammar,
-        pitch: pitch ? pitch : parsedData[randomIndex].pitch,
-        formality: formality ? formality : parsedData[randomIndex].formality,
+        filler: filler ? filler : randomDummyEntry.filler,
+        grammar: grammar ? grammar : randomDummyEntry.grammar,
+        pitch: pitch ? pitch : randomDummyEntry.pitchResult, // Corrected key name
+        formality: formality ? formality : randomDummyEntry.formality,
       }
 
+        // Clean up the uploaded file after processing
+        fs.unlink(filePath, (err) => {
+            if (err) {
+                console.error('Failed to delete temporary upload file:', filePath, err);
+            } else {
+                console.log('Successfully deleted temporary upload file:', filePath);
+            }
+        });
+
         res.status(200).json({
-            message: 'Audio file processed successfully'
+            message: 'Audio file processed successfully',
+            data: result // Send the result back
         });
     }
 );
