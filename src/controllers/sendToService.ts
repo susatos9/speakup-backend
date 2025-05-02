@@ -42,7 +42,7 @@ export async function sendToService(filePath: string, maxRetries = 15, retryDela
             console.log(`Converted WAV size: ${wavBuffer.length} bytes`);
             
             const tempDir = os.tmpdir();
-            tempFilePath = path.join(tempDir, `speech-to-text-${uuidv4()}.wav`);
+            tempFilePath = path.join(tempDir, `send-to-service-${uuidv4()}.wav`);
             fs.writeFileSync(tempFilePath, wavBuffer);
             
             console.log(`Saved WAV to temporary file: ${tempFilePath}`);
@@ -218,11 +218,11 @@ export async function sendToService(filePath: string, maxRetries = 15, retryDela
                 return makeRequest();
             }
             
-            console.error('Error during speech-to-text conversion:', error.message);
+            console.error('Error during send-to-service conversion:', error.message);
             if (error.response) {
                 console.error(`Status: ${error.response.status}, Data:`, error.response.data);
             }
-            throw new Error(`Speech-to-text conversion failed: ${error.message}${error.response ? ` (Status: ${error.response.status})` : ''}`);
+            throw new Error(`send-to-service conversion failed: ${error.message}${error.response ? ` (Status: ${error.response.status})` : ''}`);
         }
     }
     
