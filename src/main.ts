@@ -1,8 +1,11 @@
-
-console.log("Hello, world!");
-console.log("This is a TypeScript file.");
-console.log("It will be compiled to JavaScript.");
-console.log("You can run it using Node.js.");
-console.log("Have a great day!");
+import express from 'express';
+import * as fs from 'fs';
+import * as path from 'path';
 
 
+const router = express.Router();
+
+router.post('/api/health', (req, res) => {
+    res.status(200).json({ status: 'ok' });
+    }
+);

@@ -17,6 +17,10 @@
   },
   "homepage": "https://github.com/susatos9/speakup-backend#readme",
   "devDependencies": {
+    "@types/express": "^5.0.1",
     "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "express": "^5.1.0"
   }
 }
