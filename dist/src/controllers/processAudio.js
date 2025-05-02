@@ -12,7 +12,7 @@ async function convertToWav(inputBuffer) {
         const inputStream = new stream_1.Readable();
         inputStream.push(inputBuffer);
         inputStream.push(null); // Signal EOF
-        console.log(`Starting speech-to-text audio conversion. Input buffer size: ${inputBuffer.length} bytes`);
+        console.log(`Starting audio conversion. Input buffer size: ${inputBuffer.length} bytes`);
         const command = ffmpeg(inputStream)
             // Auto-detect input format (including AAC and M4A)
             .outputOptions([

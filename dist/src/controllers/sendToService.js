@@ -11,15 +11,14 @@ const path_1 = __importDefault(require("path"));
 const processAudio_1 = require("./processAudio");
 const os_1 = __importDefault(require("os"));
 const uuid_1 = require("uuid");
+const console_1 = require("console");
 const TIMEOUT = 300000; // Timeout in milliseconds (5 minutes)
 async function sendToService(filePath, maxRetries = 15, retryDelay = 20000, url, headers) {
     if (!filePath) {
-        console.log('File path is required');
-        return 'file path is required';
+        throw (0, console_1.error)('file path is required');
     }
     if (!url) {
-        console.log('URL is required');
-        return 'url is required';
+        throw (0, console_1.error)('URL is required');
     }
     let retries = 0;
     async function makeRequest() {
@@ -37,7 +36,7 @@ async function sendToService(filePath, maxRetries = 15, retryDelay = 20000, url,
             }
             console.log(`Converted WAV size: ${wavBuffer.length} bytes`);
             const tempDir = os_1.default.tmpdir();
-            tempFilePath = path_1.default.join(tempDir, `speech-to-text-${(0, uuid_1.v4)()}.wav`);
+            tempFilePath = path_1.default.join(tempDir, `send-to-service-${(0, uuid_1.v4)()}.wav`);
             fs_1.default.writeFileSync(tempFilePath, wavBuffer);
             console.log(`Saved WAV to temporary file: ${tempFilePath}`);
             try {
@@ -173,11 +172,11 @@ async function sendToService(filePath, maxRetries = 15, retryDelay = 20000, url,
                 await new Promise(resolve => setTimeout(resolve, actualDelay));
                 return makeRequest();
             }
-            console.error('Error during speech-to-text conversion:', error.message);
+            console.error('Error during send-to-service conversion:', error.message);
             if (error.response) {
                 console.error(`Status: ${error.response.status}, Data:`, error.response.data);
             }
-            throw new Error(`Speech-to-text conversion failed: ${error.message}${error.response ? ` (Status: ${error.response.status})` : ''}`);
+            throw new Error(`send-to-service conversion failed: ${error.message}${error.response ? ` (Status: ${error.response.status})` : ''}`);
         }
     }
     return makeRequest();
