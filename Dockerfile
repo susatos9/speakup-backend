@@ -46,4 +46,4 @@ USER nodeuser
 
 EXPOSE 3000
 
-CMD ["node", "dist/src/server.js"]
+CMD ["node", "dist/src/main.js"]
