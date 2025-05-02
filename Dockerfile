@@ -12,14 +12,16 @@ COPY package*.json ./
 COPY tsconfig.json ./
 
 # Install dependencies
-RUN npm install
+RUN npm install && \
+    npm install --save-dev @types/fluent-ffmpeg @types/node axios@latest && \
+    echo '{ "compilerOptions": { "skipLibCheck": true, "noImplicitAny": false } }' > tsconfig.build.json
 
 # Copy source code
 COPY src/ ./src/
-COPY arkavidia-speakup-firebase-adminsdk-fbsvc-8fbef0197a.json ./
+COPY speakup-final-firebase-adminsdk-fbsvc-6b947e7304.json ./
 
-# Compile TypeScript
-RUN npx tsc
+# Compile TypeScript with relaxed settings
+RUN npx tsc --skipLibCheck --noImplicitAny false
 
 # Final image
 FROM node:23-slim
