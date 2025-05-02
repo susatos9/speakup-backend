@@ -4,24 +4,36 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
-const multer_1 = __importDefault(require("multer"));
-const router = express_1.default.Router();
-const upload = (0, multer_1.default)({ dest: 'uploads/' });
-router.post('/upload-audio', upload.single('audio'), async (req, res) => {
-    const userID = req.body.userID;
-    const sessionID = req.body.sessionID;
-    if (!userID || !sessionID) {
-        res.status(400).json({ message: 'Missing required fields: userID and sessionID' });
-        return;
-    }
-    const supportedFormats = ['audio/wav', 'audio/wave', 'audio/mp3', 'audio/mpeg', 'audio/aac'];
-    if (!req.file?.mimetype || !supportedFormats.includes(req.file.mimetype)) {
+const cors_1 = __importDefault(require("cors"));
+const multer_1 = require("multer");
+const api_1 = __importDefault(require("./api/api"));
+const app = (0, express_1.default)();
+const port = process.env.PORT || 3000;
+// Middleware
+app.use((0, cors_1.default)());
+app.use(express_1.default.json());
+// Register the audio router
+app.use('/api', api_1.default);
+app.listen(port, () => {
+    console.log(`Server is running on http://localhost:${port}`);
+});
+// Error handling middleware
+const errorHandler = (err, req, res, next) => {
+    if (err instanceof multer_1.MulterError) {
         res.status(400).json({
-            message: 'Unsupported audio format. Please upload WAV, MP3, AAC or M4A files.',
-            supportedFormats,
+            error: true,
+            message: `File upload error: ${err.message}`
         });
         return;
     }
-    res.status(200).json({ status: 'file type is correct' });
-});
+    if (err instanceof Error) {
+        res.status(500).json({
+            error: true,
+            message: err.message
+        });
+        return;
+    }
+    next();
+};
+app.use(errorHandler);
 //# sourceMappingURL=main.js.map
