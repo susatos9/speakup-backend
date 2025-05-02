@@ -22,8 +22,7 @@ router.post('/upload-audio', upload.single('audio'), async (req, res): Promise<v
         });
         return;
       }
-  
-    res.status(200).json({ status: 'file type is correct' });
+      let filler,grammar,ptich,formality;
     }
 );
 
