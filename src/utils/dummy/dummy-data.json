@@ -2,7 +2,6 @@
   "0": 
   {
       "filler": {
-        "text": "uh I think it's working now",
         "chunks": [
           { "text": "uh", "timestamp": [0.0, 0.32] },
           { "text": "I", "timestamp": [0.4, 0.55] },
@@ -51,7 +50,6 @@
   "1": 
   {
       "filler": {
-        "text": "I grabbed my coat then drive",
         "chunks": [
           { "text": "I", "timestamp": [0.0, 0.32] },
           { "text": "grabbed", "timestamp": [0.4, 0.55] },
@@ -99,7 +97,6 @@
   "2": 
   {
       "filler": {
-        "text": "It's time to dance on stage",
         "chunks": [
           { "text": "It's", "timestamp": [0.0, 0.32] },
           { "text": "time", "timestamp": [0.4, 0.55] },

@@ -23,7 +23,7 @@ router.post('/upload-audio', upload.single('audio'), async (req, res): Promise<v
         });
         return;
       }
-      let filler,grammar,ptich,formality;
+      let filler,grammar,pitch,formality;
       filler = sendToService(
         path.join(__dirname, '../..', req.file.path),
         15, // maxRetries
