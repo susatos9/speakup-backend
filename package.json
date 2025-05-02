@@ -4,7 +4,7 @@
   "description": "Backend services that handle all required operations for audio files and AI result",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "npx tsc && node dist/src/main.js"
   },
   "repository": {
     "type": "git",
@@ -15,5 +15,8 @@
   "bugs": {
     "url": "https://github.com/susatos9/speakup-backend/issues"
   },
-  "homepage": "https://github.com/susatos9/speakup-backend#readme"
+  "homepage": "https://github.com/susatos9/speakup-backend#readme",
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  }
 }
