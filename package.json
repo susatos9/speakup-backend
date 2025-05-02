@@ -17,11 +17,15 @@
   },
   "homepage": "https://github.com/susatos9/speakup-backend#readme",
   "devDependencies": {
+    "@types/cors": "^2.8.17",
     "@types/express": "^5.0.1",
+    "@types/multer": "^1.4.12",
     "typescript": "^5.8.3"
   },
   "dependencies": {
+    "cors": "^2.8.5",
     "express": "^5.1.0",
-    "firebase-admin": "^13.3.0"
+    "firebase-admin": "^13.3.0",
+    "multer": "^1.4.5-lts.2"
   }
 }
