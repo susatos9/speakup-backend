@@ -1,0 +1,19 @@
+{
+  "name": "speakup-backend",
+  "version": "1.0.0",
+  "description": "Backend services that handle all required operations for audio files and AI result",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/susatos9/speakup-backend.git"
+  },
+  "author": "Nugroho",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/susatos9/speakup-backend/issues"
+  },
+  "homepage": "https://github.com/susatos9/speakup-backend#readme"
+}
