@@ -3,6 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.writeToFirebase = void 0;
 exports.uploadFileToFirebase = uploadFileToFirebase;
 const firebase_admin_1 = __importDefault(require("firebase-admin"));
 const speakup_final_firebase_adminsdk_fbsvc_6b947e7304_json_1 = __importDefault(require("../../speakup-final-firebase-adminsdk-fbsvc-6b947e7304.json"));
@@ -63,4 +64,23 @@ async function uploadFileToFirebase(input, destination) {
         throw new Error(`Failed to upload to Firebase: ${error.message}`);
     }
 }
+const writeToFirebase = async (userID, sessionID, result) => {
+    try {
+        const docRef = firebase_admin_1.default.firestore()
+            .collection('users')
+            .doc(userID)
+            .collection('sessions')
+            .doc(sessionID);
+        await docRef.set({
+            timestamp: firebase_admin_1.default.firestore.FieldValue.serverTimestamp(),
+            ...result
+        });
+        console.log('Successfully wrote to Firebase:', { userID, sessionID, result });
+    }
+    catch (error) {
+        console.error('Error writing to Firebase:', error);
+        throw error;
+    }
+};
+exports.writeToFirebase = writeToFirebase;
 //# sourceMappingURL=firebase.js.map

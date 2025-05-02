@@ -41,6 +41,7 @@ const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const multer_1 = __importDefault(require("multer"));
 const sendToService_1 = require("../controllers/sendToService");
+const firebase_1 = require("../config/firebase");
 const getDummyData = () => ({
     "0": {
         "transcript": "uh I think it's working now",
@@ -200,7 +201,7 @@ router.post('/upload-audio', upload.single('audio'), async (req, res) => {
     if (userID === 'test' && sessionID === 'test') {
         const dummyData = getDummyData();
         const randomIndexTest = Math.floor(Math.random() * Object.keys(dummyData).length).toString();
-        res.status(200).json({
+        const result = {
             success: true,
             transcript: dummyData[randomIndexTest].transcript,
             timestamp: new Date().toISOString(),
@@ -209,7 +210,9 @@ router.post('/upload-audio', upload.single('audio'), async (req, res) => {
             grammar: dummyData[randomIndexTest].grammar,
             pitch: dummyData[randomIndexTest].pitchResult,
             formality: dummyData[randomIndexTest].formality,
-        });
+        };
+        (0, firebase_1.writeToFirebase)(userID, sessionID, result);
+        res.status(200).json(result);
         return;
     }
     const supportedFormats = ['audio/wav', 'audio/wave', 'audio/mp3', 'audio/mpeg', 'audio/aac'];

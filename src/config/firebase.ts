@@ -62,3 +62,24 @@ export async function uploadFileToFirebase(input: Buffer | string, destination: 
     throw new Error(`Failed to upload to Firebase: ${error.message}`);
   }
 }
+
+export const writeToFirebase = async (userID: string, sessionID: string, result: any) => {
+  try {
+    const docRef = admin.firestore()
+      .collection('users')
+      .doc(userID)
+      .collection('sessions')
+      .doc(sessionID);
+    
+    await docRef.update({
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      ...result
+    });
+    
+    console.log('Successfully wrote to Firebase:', { userID, sessionID, result });
+  } catch (error) {
+    console.error('Error writing to Firebase:', error);
+    throw error;
+  }
+}
+

@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import multer from 'multer';
 import { sendToService } from '../controllers/sendToService';
+import { writeToFirebase }  from '../config/firebase';
 
 interface DummyDataEntry {
     transcript: string;
@@ -211,9 +212,8 @@ router.post('/upload-audio', upload.single('audio'), async (req, res): Promise<v
     if(userID ==='test' && sessionID === 'test') {
         const dummyData = getDummyData();
         const randomIndexTest = Math.floor(Math.random() * Object.keys(dummyData).length).toString();
-            
-        
-        res.status(200).json({
+        const result = 
+        {
             success: true,
             transcript: dummyData[randomIndexTest].transcript,
             timestamp: new Date().toISOString(),
@@ -222,7 +222,9 @@ router.post('/upload-audio', upload.single('audio'), async (req, res): Promise<v
             grammar: dummyData[randomIndexTest].grammar,
             pitch: dummyData[randomIndexTest].pitchResult,
             formality: dummyData[randomIndexTest].formality,
-        });
+        }
+        writeToFirebase(userID, sessionID, result);
+        res.status(200).json(result);
         return;
     }
     
