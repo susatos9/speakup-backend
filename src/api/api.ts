@@ -3,7 +3,10 @@ import * as fs from 'fs';
 import * as path from 'path';
 import multer from 'multer';
 import { sendToService } from '../controllers/sendToService';
-import { writeToFirebase }  from '../config/firebase';
+import { writeToFirebase } from '../config/firebase';
+import { convertSpeechToText } from '../controllers/grammar';
+import { analyzeFormality } from '../controllers/formality';
+import { filler as fillerFunction } from '../controllers/filler';
 
 interface DummyDataEntry {
     transcript: string;
@@ -242,41 +245,54 @@ router.post('/upload-audio', upload.single('audio'), async (req, res): Promise<v
       // Use req.file.path directly as it's relative to the project root
       const filePath = req.file.path; 
 
-      filler = await sendToService(
-        filePath,
-        15, // maxRetries
-        20000, // retryDelay
-        'https://pitch-615384299938.asia-southeast1.run.app/analyze', // Replace with your actual URL
-        {
-            filename: 'audio.wav',
-            contentType: 'multipart/form-data',
-        });
-      console.log(filler);
+    //   pitch = await sendToService(
+    //     filePath,
+    //     15, // maxRetries
+    //     20000, // retryDelay
+    //     'https://pitch-615384299938.asia-southeast1.run.app/analyze', // Replace with your actual URL
+    //     {
+    //         filename: 'audio.wav',
+    //         contentType: 'multipart/form-data',
+    //     });
+    //   console.log(filler);
     
-      grammar = await sendToService(
+    //   const fileContent = fs.readFileSync(filePath); // Read the file content
+
+      grammar = await convertSpeechToText(
+        filePath,
+        15, // maxRetries
+        2000, // retryDelay
+      );
+      console.log(grammar);
+
+      filler = await fillerFunction(
         filePath,
         15, // maxRetries
         20000, // retryDelay
-        'https://api.example.com/endpoint', // Replace with your actual URL
-        {
-          'Content-Type': req.file.mimetype,
-      });
-      pitch = await sendToService(
-        filePath,
-        15, // maxRetries
-        20000, // retryDelay
-        'https://api.example.com/endpoint', // Replace with your actual URL
-        {
-          'Content-Type': req.file.mimetype,
-      });
-      formality = await sendToService(
-        filePath,
-        15, // maxRetries
-        20000, // retryDelay
-        'https://api.example.com/endpoint', // Replace with your actual URL
-        {
-          'Content-Type': req.file.mimetype,
-      });
+        );
+    
+    // Extract transcript by executing the function immediately instead of storing the function itself
+    const extractTranscript = (gr: any): string => {
+      if (gr && gr.sentence_pairs && Array.isArray(gr.sentence_pairs)) {
+        // Log the sentence pairs for debugging
+        console.log('Sentence pairs:', JSON.stringify(gr.sentence_pairs));
+        return gr.sentence_pairs.map((pair: any) => pair.original).join(' ');
+      }
+      return typeof gr === 'string' ? gr : '';
+    };
+    
+    // Get the actual transcript text by executing the function
+    const transcriptText = extractTranscript(grammar);
+    console.log('Extracted transcript:', transcriptText);
+    
+    try {
+      formality = await analyzeFormality(transcriptText);
+      console.log('Formality analysis result:', formality);
+    } catch (formalityError: any) {
+      console.warn('Formality analysis failed:', formalityError.message);
+      formality = null; // Set to null if the analysis fails
+    }
+
 
       // how to load dummy data from a json file
       // Construct path to dummy data relative to __dirname

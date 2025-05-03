@@ -1,52 +1,135 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sendToService = sendToService;
+exports.filler = filler;
 const axios_1 = __importDefault(require("axios"));
-const form_data_1 = __importDefault(require("form-data"));
-const fs_1 = __importDefault(require("fs"));
+const fs = __importStar(require("fs"));
+const stream_1 = require("stream");
+const fluent_ffmpeg_1 = __importDefault(require("fluent-ffmpeg"));
 const path_1 = __importDefault(require("path"));
-const processAudio_1 = require("./processAudio");
-const os_1 = __importDefault(require("os"));
+const form_data_1 = __importDefault(require("form-data"));
 const uuid_1 = require("uuid");
-const console_1 = require("console");
-const TIMEOUT = 30000; // Timeout in milliseconds (5 minutes)
-async function sendToService(filePath, maxRetries = 15, retryDelay = 20000, url, headers) {
-    if (!filePath) {
-        throw (0, console_1.error)('file path is required');
-    }
-    if (!url) {
-        throw (0, console_1.error)('URL is required');
-    }
+const os_1 = __importDefault(require("os"));
+const TIMEOUT = 300000; // Timeout in milliseconds (5 minutes)
+async function convertToWav(inputBuffer) {
+    return new Promise((resolve, reject) => {
+        let outputBuffer = Buffer.alloc(0);
+        const inputStream = new stream_1.Readable();
+        inputStream.push(inputBuffer);
+        inputStream.push(null); // Signal EOF
+        console.log(`Starting speech-to-text audio conversion. Input buffer size: ${inputBuffer.length} bytes`);
+        const command = ffmpeg(inputStream)
+            // Auto-detect input format (including AAC and M4A)
+            .outputOptions([
+            '-ac 1', // mono output (reduces file size)
+            '-ar 16000', // 16kHz sample rate (sufficient for speech)
+            '-acodec pcm_u8' // 8-bit PCM audio (smallest size)
+        ])
+            .toFormat('wav')
+            .audioCodec('pcm_u8') // 8-bit unsigned PCM
+            .audioChannels(1) // Ensure mono output
+            .duration(300); // Set a fixed maximum duration of 5 minutes (300 seconds)
+        let ffmpegStderr = ''; // Collect stderr for better error reporting
+        command
+            .on('start', (commandLine) => {
+            console.log('FFmpeg conversion started:', commandLine);
+        })
+            .on('stderr', (stderrLine) => {
+            ffmpegStderr += stderrLine + '\n';
+        })
+            .on('error', (err, stdout, stderr) => {
+            const fullStderr = ffmpegStderr + (stderr || '');
+            console.error('FFmpeg conversion error:', err.message);
+            console.error('FFmpeg stderr output:\n', fullStderr);
+            const error = new Error(`FFmpeg conversion failed: ${err.message}. FFmpeg stderr: ${fullStderr}`);
+            reject(error);
+        })
+            .on('end', () => {
+            console.log('FFmpeg conversion finished successfully.');
+            if (outputBuffer.length === 0) {
+                console.error('FFmpeg stderr output on empty buffer:\n', ffmpegStderr);
+                reject(new Error('FFmpeg conversion finished but produced an empty buffer. Check FFmpeg stderr log.'));
+            }
+            else {
+                resolve(outputBuffer);
+            }
+        })
+            .pipe()
+            .on('data', (chunk) => {
+            outputBuffer = Buffer.concat([outputBuffer, chunk]);
+        })
+            .on('error', (err) => {
+            console.error('FFmpeg output stream error:', err.message);
+            const error = new Error(`FFmpeg output stream error: ${err.message}. FFmpeg stderr: ${ffmpegStderr}`);
+            reject(error);
+        });
+    });
+}
+async function filler(filePath, maxRetries = 15, retryDelay = 20000) {
+    const url = 'https://s2tarkav-525960652018.asia-southeast1.run.app/speech2text';
     let retries = 0;
     async function makeRequest() {
         let tempFilePath = '';
         let wavBuffer = null;
         try {
-            const inputBuffer = fs_1.default.readFileSync(filePath);
+            const inputBuffer = fs.readFileSync(filePath);
             if (inputBuffer.length === 0) {
                 throw new Error('Input file is empty');
             }
             console.log(`Input file size: ${inputBuffer.length} bytes`);
-            wavBuffer = await (0, processAudio_1.convertToWav)(inputBuffer);
+            wavBuffer = await convertToWav(inputBuffer);
             if (wavBuffer.length < 44) {
                 throw new Error('Converted WAV file is invalid or too small');
             }
             console.log(`Converted WAV size: ${wavBuffer.length} bytes`);
             const tempDir = os_1.default.tmpdir();
-            tempFilePath = path_1.default.join(tempDir, `send-to-service-${(0, uuid_1.v4)()}.wav`);
-            fs_1.default.writeFileSync(tempFilePath, wavBuffer);
+            tempFilePath = path_1.default.join(tempDir, `speech-to-text-${(0, uuid_1.v4)()}.wav`);
+            fs.writeFileSync(tempFilePath, wavBuffer);
             console.log(`Saved WAV to temporary file: ${tempFilePath}`);
             try {
-                console.log('Attempting direct binary upload with Content-Type: application/octet-stream...');
-                const fileContent = fs_1.default.readFileSync(tempFilePath);
+                console.log('Attempting direct binary upload with Content-Type: audio/wav...');
+                const fileContent = fs.readFileSync(tempFilePath);
                 console.log(`Raw file size for direct upload: ${fileContent.length} bytes`);
                 const directResponse = await axios_1.default.post(url, fileContent, {
                     headers: {
-                        'Content-Type': 'application/octet-stream',
-                        ...headers
+                        'Content-Type': 'audio/wav',
+                        'Content-Length': fileContent.length.toString(),
+                        'Accept': 'application/json',
                     },
                     timeout: TIMEOUT,
                     maxBodyLength: Infinity,
@@ -56,8 +139,8 @@ async function sendToService(filePath, maxRetries = 15, retryDelay = 20000, url,
                 if (directResponse.data) {
                     console.log('Direct upload method successful!');
                     console.log(`Direct upload response: ${JSON.stringify(directResponse.data).substring(0, 200)}...`);
-                    if (fs_1.default.existsSync(tempFilePath)) {
-                        fs_1.default.unlinkSync(tempFilePath);
+                    if (fs.existsSync(tempFilePath)) {
+                        fs.unlinkSync(tempFilePath);
                         console.log(`Cleaned up temporary file: ${tempFilePath}`);
                     }
                     return directResponse.data;
@@ -70,20 +153,25 @@ async function sendToService(filePath, maxRetries = 15, retryDelay = 20000, url,
                 console.error('Direct upload failed:', directError.message);
                 console.log('Trying with chunked binary upload...');
                 try {
-                    const fileStats = fs_1.default.statSync(tempFilePath);
+                    const fileStats = fs.statSync(tempFilePath);
                     const fileSize = fileStats.size;
-                    const fileStream = fs_1.default.createReadStream(tempFilePath);
+                    const fileStream = fs.createReadStream(tempFilePath);
                     console.log(`Starting chunked upload with file size: ${fileSize} bytes`);
                     const chunkedResponse = await axios_1.default.post(url, fileStream, {
-                        headers: headers,
+                        headers: {
+                            'Content-Type': 'audio/wav',
+                            'Content-Length': fileSize.toString(),
+                            'Transfer-Encoding': 'chunked',
+                            'Accept': 'application/json',
+                        },
                         timeout: TIMEOUT,
                         maxBodyLength: Infinity,
                         maxContentLength: Infinity,
                     });
                     if (chunkedResponse.data) {
                         console.log('Chunked upload method successful!');
-                        if (fs_1.default.existsSync(tempFilePath)) {
-                            fs_1.default.unlinkSync(tempFilePath);
+                        if (fs.existsSync(tempFilePath)) {
+                            fs.unlinkSync(tempFilePath);
                         }
                         return chunkedResponse.data;
                     }
@@ -93,22 +181,25 @@ async function sendToService(filePath, maxRetries = 15, retryDelay = 20000, url,
                     console.error('Chunked upload failed:', chunkedError.message);
                     console.log('Trying with properly configured FormData...');
                     const formData = new form_data_1.default();
-                    const fileBuffer = fs_1.default.readFileSync(tempFilePath);
+                    const fileBuffer = fs.readFileSync(tempFilePath);
                     formData.append('file', fileBuffer, {
                         filename: 'audio.wav',
                         contentType: 'audio/wav',
                     });
                     try {
                         const formResponse = await axios_1.default.post(url, formData, {
-                            headers: headers,
+                            headers: {
+                                ...formData.getHeaders(),
+                                'Accept': 'application/json',
+                            },
                             timeout: TIMEOUT,
                             maxBodyLength: Infinity,
                             maxContentLength: Infinity,
                         });
                         if (formResponse.data) {
                             console.log('FormData method successful!');
-                            if (fs_1.default.existsSync(tempFilePath)) {
-                                fs_1.default.unlinkSync(tempFilePath);
+                            if (fs.existsSync(tempFilePath)) {
+                                fs.unlinkSync(tempFilePath);
                             }
                             return formResponse.data;
                         }
@@ -123,15 +214,18 @@ async function sendToService(filePath, maxRetries = 15, retryDelay = 20000, url,
                             contentType: 'audio/wav',
                         });
                         const finalResponse = await axios_1.default.post(url, finalFormData, {
-                            headers: headers,
+                            headers: {
+                                ...finalFormData.getHeaders(),
+                                'Accept': 'application/json',
+                            },
                             timeout: TIMEOUT,
                             maxBodyLength: Infinity,
                             maxContentLength: Infinity,
                         });
                         if (finalResponse.data) {
                             console.log('Final attempt successful!');
-                            if (fs_1.default.existsSync(tempFilePath)) {
-                                fs_1.default.unlinkSync(tempFilePath);
+                            if (fs.existsSync(tempFilePath)) {
+                                fs.unlinkSync(tempFilePath);
                             }
                             return finalResponse.data;
                         }
@@ -144,9 +238,9 @@ async function sendToService(filePath, maxRetries = 15, retryDelay = 20000, url,
             const shouldCleanup = !((error.response?.data?.error === 'No audio data received' && retries < maxRetries) ||
                 (error.response?.status === 503 && retries < maxRetries) ||
                 (error.code === 'ECONNABORTED' && retries < maxRetries));
-            if (shouldCleanup && tempFilePath && fs_1.default.existsSync(tempFilePath)) {
+            if (shouldCleanup && tempFilePath && fs.existsSync(tempFilePath)) {
                 try {
-                    fs_1.default.unlinkSync(tempFilePath);
+                    fs.unlinkSync(tempFilePath);
                     console.log(`Cleaned up temporary file: ${tempFilePath}`);
                 }
                 catch (cleanupError) {
@@ -175,13 +269,21 @@ async function sendToService(filePath, maxRetries = 15, retryDelay = 20000, url,
                 await new Promise(resolve => setTimeout(resolve, actualDelay));
                 return makeRequest();
             }
-            console.error('Error during send-to-service conversion:', error.message);
+            console.error('Error during speech-to-text conversion:', error.message);
             if (error.response) {
                 console.error(`Status: ${error.response.status}, Data:`, error.response.data);
             }
-            throw new Error(`send-to-service conversion failed: ${error.message}${error.response ? ` (Status: ${error.response.status})` : ''}`);
+            throw new Error(`Speech-to-text conversion failed: ${error.message}${error.response ? ` (Status: ${error.response.status})` : ''}`);
         }
     }
     return makeRequest();
 }
-//# sourceMappingURL=sendToService.js.map
+function ffmpeg(inputStream) {
+    return (0, fluent_ffmpeg_1.default)(inputStream);
+}
+function duration(seconds) {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+}
+//# sourceMappingURL=filler.js.map

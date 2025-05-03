@@ -1,23 +1,75 @@
 import axios from 'axios';
-import FormData from 'form-data';
-import fs from 'fs';
+import * as fs from 'fs';
+import { Readable } from 'stream';
+import ffmpegLib from 'fluent-ffmpeg';
 import path from 'path';
-import { convertToWav } from './processAudio';
-import os from 'os';
+import FormData from 'form-data';
 import { v4 as uuidv4 } from 'uuid';
-import e from 'express';
-import { error } from 'console';
+import os from 'os';
 
+const TIMEOUT = 300000; // Timeout in milliseconds (5 minutes)
 
-const TIMEOUT = 30000; // Timeout in milliseconds (5 minutes)
+async function convertToWavGrammar(inputBuffer: Buffer): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+        let outputBuffer = Buffer.alloc(0);
+        const inputStream = new Readable();
+        inputStream.push(inputBuffer);
+        inputStream.push(null); // Signal EOF
 
-export async function sendToService(filePath: string, maxRetries = 15, retryDelay = 20000, url:string, headers:{}): Promise<string> {
-    if (!filePath) {
-        throw error('file path is required');
-    }
-    if (!url) {
-        throw error('URL is required');
-    }
+        console.log(`Starting speech-to-text audio conversion. Input buffer size: ${inputBuffer.length} bytes`);
+
+        const command = ffmpeg(inputStream)
+            // Auto-detect input format (including AAC and M4A)
+            .outputOptions([
+                '-ac 1',                  // mono output (reduces file size)
+                '-ar 16000',              // 16kHz sample rate (sufficient for speech)
+                '-acodec pcm_u8'          // 8-bit PCM audio (smallest size)
+            ])
+            .toFormat('wav')
+            .audioCodec('pcm_u8')         // 8-bit unsigned PCM
+            .audioChannels(1)            // Ensure mono output
+            .duration(300); // Set a fixed maximum duration of 5 minutes (300 seconds)
+
+        let ffmpegStderr = ''; // Collect stderr for better error reporting
+
+        command
+            .on('start', (commandLine) => {
+                console.log('FFmpeg conversion started:', commandLine);
+            })
+            .on('stderr', (stderrLine) => {
+                ffmpegStderr += stderrLine + '\n';
+            })
+            .on('error', (err, stdout, stderr) => {
+                const fullStderr = ffmpegStderr + (stderr || '');
+                console.error('FFmpeg conversion error:', err.message);
+                console.error('FFmpeg stderr output:\n', fullStderr);
+                const error = new Error(`FFmpeg conversion failed: ${err.message}. FFmpeg stderr: ${fullStderr}`);
+                reject(error);
+            })
+            .on('end', () => {
+                console.log('FFmpeg conversion finished successfully.');
+                if (outputBuffer.length === 0) {
+                     console.error('FFmpeg stderr output on empty buffer:\n', ffmpegStderr);
+                     reject(new Error('FFmpeg conversion finished but produced an empty buffer. Check FFmpeg stderr log.'));
+                } else {
+                    resolve(outputBuffer);
+                }
+            })
+            .pipe()
+            .on('data', (chunk: Buffer) => {
+                outputBuffer = Buffer.concat([outputBuffer, chunk]);
+            })
+            .on('error', (err) => {
+                console.error('FFmpeg output stream error:', err.message);
+                const error = new Error(`FFmpeg output stream error: ${err.message}. FFmpeg stderr: ${ffmpegStderr}`);
+                reject(error);
+            });
+    });
+}
+
+export async function convertSpeechToText(filePath: string, maxRetries = 15, retryDelay = 20000): Promise<string> {
+    const url = 'https://s2tarkav-525960652018.asia-southeast1.run.app/speech2text';
+    
     let retries = 0;
     
     async function makeRequest() {
@@ -33,7 +85,7 @@ export async function sendToService(filePath: string, maxRetries = 15, retryDela
             
             console.log(`Input file size: ${inputBuffer.length} bytes`);
 
-            wavBuffer = await convertToWav(inputBuffer);
+            wavBuffer = await convertToWavGrammar(inputBuffer);
             
             if (wavBuffer.length < 44) {
                 throw new Error('Converted WAV file is invalid or too small');
@@ -42,21 +94,22 @@ export async function sendToService(filePath: string, maxRetries = 15, retryDela
             console.log(`Converted WAV size: ${wavBuffer.length} bytes`);
             
             const tempDir = os.tmpdir();
-            tempFilePath = path.join(tempDir, `send-to-service-${uuidv4()}.wav`);
+            tempFilePath = path.join(tempDir, `speech-to-text-${uuidv4()}.wav`);
             fs.writeFileSync(tempFilePath, wavBuffer);
             
             console.log(`Saved WAV to temporary file: ${tempFilePath}`);
             
             try {
-                console.log('Attempting direct binary upload with Content-Type: application/octet-stream...');
+                console.log('Attempting direct binary upload with Content-Type: audio/wav...');
                 
                 const fileContent = fs.readFileSync(tempFilePath);
                 console.log(`Raw file size for direct upload: ${fileContent.length} bytes`);
                 
                 const directResponse = await axios.post(url, fileContent, {
                     headers: {
-                        'Content-Type': 'application/octet-stream',
-                        ...headers
+                        'Content-Type': 'audio/wav',
+                        'Content-Length': fileContent.length.toString(),
+                        'Accept': 'application/json',
                     },
                     timeout: TIMEOUT,
                     maxBodyLength: Infinity,
@@ -92,7 +145,12 @@ export async function sendToService(filePath: string, maxRetries = 15, retryDela
                     console.log(`Starting chunked upload with file size: ${fileSize} bytes`);
                     
                     const chunkedResponse = await axios.post(url, fileStream, {
-                        headers: headers,
+                        headers: {
+                            'Content-Type': 'audio/wav',
+                            'Content-Length': fileSize.toString(),
+                            'Transfer-Encoding': 'chunked',
+                            'Accept': 'application/json',
+                        },
                         timeout: TIMEOUT,
                         maxBodyLength: Infinity,
                         maxContentLength: Infinity,
@@ -126,7 +184,10 @@ export async function sendToService(filePath: string, maxRetries = 15, retryDela
                     
                     try {
                         const formResponse = await axios.post(url, formData, {
-                            headers: headers,
+                            headers: {
+                                ...formData.getHeaders(),
+                                'Accept': 'application/json',
+                            },
                             timeout: TIMEOUT,
                             maxBodyLength: Infinity,
                             maxContentLength: Infinity,
@@ -156,7 +217,10 @@ export async function sendToService(filePath: string, maxRetries = 15, retryDela
                         });
                         
                         const finalResponse = await axios.post(url, finalFormData, {
-                            headers: headers,
+                            headers: {
+                                ...finalFormData.getHeaders(),
+                                'Accept': 'application/json',
+                            },
                             timeout: TIMEOUT,
                             maxBodyLength: Infinity,
                             maxContentLength: Infinity,
@@ -221,13 +285,23 @@ export async function sendToService(filePath: string, maxRetries = 15, retryDela
                 return makeRequest();
             }
             
-            console.error('Error during send-to-service conversion:', error.message);
+            console.error('Error during speech-to-text conversion:', error.message);
             if (error.response) {
                 console.error(`Status: ${error.response.status}, Data:`, error.response.data);
             }
-            throw new Error(`send-to-service conversion failed: ${error.message}${error.response ? ` (Status: ${error.response.status})` : ''}`);
+            throw new Error(`Speech-to-text conversion failed: ${error.message}${error.response ? ` (Status: ${error.response.status})` : ''}`);
         }
     }
     
     return makeRequest();
 }
+
+function ffmpeg(inputStream: Readable): ffmpegLib.FfmpegCommand {
+    return ffmpegLib(inputStream);
+}
+function duration(seconds: number): string {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+}
+

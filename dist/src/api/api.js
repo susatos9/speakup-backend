@@ -40,8 +40,10 @@ const express_1 = __importDefault(require("express"));
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const multer_1 = __importDefault(require("multer"));
-const sendToService_1 = require("../controllers/sendToService");
 const firebase_1 = require("../config/firebase");
+const grammar_1 = require("../controllers/grammar");
+const formality_1 = require("../controllers/formality");
+const filler_1 = require("../controllers/filler");
 const getDummyData = () => ({
     "0": {
         "transcript": "uh I think it's working now",
@@ -226,32 +228,42 @@ router.post('/upload-audio', upload.single('audio'), async (req, res) => {
     let filler, grammar, pitch, formality;
     // Use req.file.path directly as it's relative to the project root
     const filePath = req.file.path;
-    filler = await (0, sendToService_1.sendToService)(filePath, 15, // maxRetries
-    20000, // retryDelay
-    'https://pitch-615384299938.asia-southeast1.run.app/analyze', // Replace with your actual URL
-    {
-        filename: 'audio.wav',
-        contentType: 'multipart/form-data',
-    });
-    console.log(filler);
-    grammar = await (0, sendToService_1.sendToService)(filePath, 15, // maxRetries
-    20000, // retryDelay
-    'https://api.example.com/endpoint', // Replace with your actual URL
-    {
-        'Content-Type': req.file.mimetype,
-    });
-    pitch = await (0, sendToService_1.sendToService)(filePath, 15, // maxRetries
-    20000, // retryDelay
-    'https://api.example.com/endpoint', // Replace with your actual URL
-    {
-        'Content-Type': req.file.mimetype,
-    });
-    formality = await (0, sendToService_1.sendToService)(filePath, 15, // maxRetries
-    20000, // retryDelay
-    'https://api.example.com/endpoint', // Replace with your actual URL
-    {
-        'Content-Type': req.file.mimetype,
-    });
+    //   pitch = await sendToService(
+    //     filePath,
+    //     15, // maxRetries
+    //     20000, // retryDelay
+    //     'https://pitch-615384299938.asia-southeast1.run.app/analyze', // Replace with your actual URL
+    //     {
+    //         filename: 'audio.wav',
+    //         contentType: 'multipart/form-data',
+    //     });
+    //   console.log(filler);
+    //   const fileContent = fs.readFileSync(filePath); // Read the file content
+    grammar = await (0, grammar_1.convertSpeechToText)(filePath, 15, // maxRetries
+    2000);
+    console.log(grammar);
+    filler = await (0, filler_1.filler)(filePath, 15, // maxRetries
+    20000);
+    // Extract transcript by executing the function immediately instead of storing the function itself
+    const extractTranscript = (gr) => {
+        if (gr && gr.sentence_pairs && Array.isArray(gr.sentence_pairs)) {
+            // Log the sentence pairs for debugging
+            console.log('Sentence pairs:', JSON.stringify(gr.sentence_pairs));
+            return gr.sentence_pairs.map((pair) => pair.original).join(' ');
+        }
+        return typeof gr === 'string' ? gr : '';
+    };
+    // Get the actual transcript text by executing the function
+    const transcriptText = extractTranscript(grammar);
+    console.log('Extracted transcript:', transcriptText);
+    try {
+        formality = await (0, formality_1.analyzeFormality)(transcriptText);
+        console.log('Formality analysis result:', formality);
+    }
+    catch (formalityError) {
+        console.warn('Formality analysis failed:', formalityError.message);
+        formality = null; // Set to null if the analysis fails
+    }
     // how to load dummy data from a json file
     // Construct path to dummy data relative to __dirname
     const dummyDataPath = path.join(__dirname, '../utils/dummy/dummy-data.json');
