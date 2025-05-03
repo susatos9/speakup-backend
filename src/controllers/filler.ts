@@ -68,7 +68,7 @@ async function convertToWav(inputBuffer: Buffer): Promise<Buffer> {
 }
 
 export async function filler(filePath: string, maxRetries = 15, retryDelay = 20000): Promise<string> {
-    const url = 'https://s2tarkav-525960652018.asia-southeast1.run.app/speech2text';
+    const url = 'https://cheesecz-speakup-filler.hf.space/transcribe';
     
     let retries = 0;
     

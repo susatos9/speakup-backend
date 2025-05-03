@@ -101,7 +101,7 @@ async function convertToWav(inputBuffer) {
     });
 }
 async function filler(filePath, maxRetries = 15, retryDelay = 20000) {
-    const url = 'https://s2tarkav-525960652018.asia-southeast1.run.app/speech2text';
+    const url = 'https://cheesecz-speakup-filler.hf.space/transcribe';
     let retries = 0;
     async function makeRequest() {
         let tempFilePath = '';
