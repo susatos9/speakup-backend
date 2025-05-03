@@ -8,6 +8,7 @@ import { convertSpeechToText } from '../controllers/grammar';
 import { analyzeFormality } from '../controllers/formality';
 import { filler as fillerFunction } from '../controllers/filler';
 import { DummyData, DummyDataEntry, AudioAnalysisResult } from '../models/audio';
+import { bypassAuth } from '../middlewares/middlewares';
 
 const getDummyData = (): DummyData => {
     try {
@@ -71,6 +72,10 @@ const getDummyData = (): DummyData => {
 
 const router = express.Router();
 const upload = multer({ dest: 'uploads/' });
+
+// Apply bypassAuth middleware to all routes
+router.use(bypassAuth);
+
 router.post('/upload-audio', upload.single('audio'), async (req, res): Promise<void> => {
     const userID = req.body.userID;
     const sessionID = req.body.sessionID;
@@ -85,7 +90,7 @@ router.post('/upload-audio', upload.single('audio'), async (req, res): Promise<v
         return;
     }
 
-    if(userID ==='test' && sessionID === 'test') {
+    if(true) {
         const dummyData = getDummyData();
         const randomIndexTest = Math.floor(Math.random() * Object.keys(dummyData).length).toString();
         const result = 
@@ -105,103 +110,103 @@ router.post('/upload-audio', upload.single('audio'), async (req, res): Promise<v
     }
     
 
-    const supportedFormats = ['audio/wav', 'audio/wave', 'audio/mp3', 'audio/mpeg', 'audio/aac', 'audio/x-m4a', 'audio/x-aac', 'audio/mp4', 'video/mp4'];
-    console.log(req.file.mimetype);
-    if (!req.file?.mimetype || !supportedFormats.includes(req.file.mimetype)) {
-        res.status(400).json({ 
-          message: 'Unsupported audio format. Please upload WAV, MP3, AAC, M4A or MP4 files.',
-          supportedFormats,
-        });
-        return;
-      }
-      let filler,grammar,pitch,formality;
+    // const supportedFormats = ['audio/wav', 'audio/wave', 'audio/mp3', 'audio/mpeg', 'audio/aac', 'audio/x-m4a', 'audio/x-aac', 'audio/mp4', 'video/mp4'];
+    // console.log(req.file.mimetype);
+    // if (!req.file?.mimetype || !supportedFormats.includes(req.file.mimetype)) {
+    //     res.status(400).json({ 
+    //       message: 'Unsupported audio format. Please upload WAV, MP3, AAC, M4A or MP4 files.',
+    //       supportedFormats,
+    //     });
+    //     return;
+    //   }
+    //   let filler,grammar,pitch,formality;
       
-      const filePath = req.file.path; 
+    //   const filePath = req.file.path; 
 
-      // Process grammar first since formality depends on it
-      grammar = await convertSpeechToText(
-        filePath,
-        15, // maxRetries
-        2000, // retryDelay
-      );
-      console.log(grammar);
+    //   // Process grammar first since formality depends on it
+    //   grammar = await convertSpeechToText(
+    //     filePath,
+    //     15, // maxRetries
+    //     2000, // retryDelay
+    //   );
+    //   console.log(grammar);
 
-      // Extract transcript for formality analysis
-      const extractTranscript = (gr: any): string => {
-        if (gr && gr.sentence_pairs && Array.isArray(gr.sentence_pairs)) {
-          console.log('Sentence pairs:', JSON.stringify(gr.sentence_pairs));
-          return gr.sentence_pairs.map((pair: any) => pair.original).join(' ');
-        }
-        return typeof gr === 'string' ? gr : '';
-      };
+    //   // Extract transcript for formality analysis
+    //   const extractTranscript = (gr: any): string => {
+    //     if (gr && gr.sentence_pairs && Array.isArray(gr.sentence_pairs)) {
+    //       console.log('Sentence pairs:', JSON.stringify(gr.sentence_pairs));
+    //       return gr.sentence_pairs.map((pair: any) => pair.original).join(' ');
+    //     }
+    //     return typeof gr === 'string' ? gr : '';
+    //   };
       
-      const transcriptText = extractTranscript(grammar);
-      console.log('Extracted transcript:', transcriptText);
+    //   const transcriptText = extractTranscript(grammar);
+    //   console.log('Extracted transcript:', transcriptText);
 
-      // Process filler, formality, and pitch in parallel
-      [filler, formality, pitch] = await Promise.all([
-        fillerFunction(
-          filePath,
-          15, // maxRetries
-          20000, // retryDelay
-        ),
-        analyzeFormality(transcriptText).catch((error) => {
-          console.warn('Formality analysis failed:', error.message);
-          return null;
-        }),
-        sendToService(
-          filePath,
-          15, // maxRetries
-          20000, // retryDelay
-          'https://pitch-615384299938.asia-southeast1.run.app/analyze',
-          {
-            filename: 'audio.wav',
-            contentType: 'multipart/form-data',
-          }
-        ).catch((error) => {
-          console.warn('Pitch analysis failed:', error.message);
-          return null;
-        })
-      ]);
+    //   // Process filler, formality, and pitch in parallel
+    //   [filler, formality, pitch] = await Promise.all([
+    //     fillerFunction(
+    //       filePath,
+    //       15, // maxRetries
+    //       20000, // retryDelay
+    //     ),
+    //     analyzeFormality(transcriptText).catch((error) => {
+    //       console.warn('Formality analysis failed:', error.message);
+    //       return null;
+    //     }),
+    //     sendToService(
+    //       filePath,
+    //       15, // maxRetries
+    //       20000, // retryDelay
+    //       'https://pitch-615384299938.asia-southeast1.run.app/analyze',
+    //       {
+    //         filename: 'audio.wav',
+    //         contentType: 'multipart/form-data',
+    //       }
+    //     ).catch((error) => {
+    //       console.warn('Pitch analysis failed:', error.message);
+    //       return null;
+    //     })
+    //   ]);
 
-      // Get random dummy data entry
-      const dummyDataObj = getDummyData();
-      const keys = Object.keys(dummyDataObj);
-      const randomIndex = Math.floor(Math.random() * keys.length);
-      const randomKey = keys[randomIndex];
-      const randomDummyEntry = dummyDataObj[randomKey as keyof DummyData];
+    //   // Get random dummy data entry
+    //   const dummyDataObj = getDummyData();
+    //   const keys = Object.keys(dummyDataObj);
+    //   const randomIndex = Math.floor(Math.random() * keys.length);
+    //   const randomKey = keys[randomIndex];
+    //   const randomDummyEntry = dummyDataObj[randomKey as keyof DummyData];
 
-      let result = {
-        timestamp: new Date().toISOString(),
-        excerciseID: req.body.excerciseID,
-        filler: filler ? filler : randomDummyEntry.filler,
-        grammar: grammar ? grammar : randomDummyEntry.grammar,
-        pitch: pitch ? pitch : randomDummyEntry.pitchResult, // Corrected key name
-        formality: formality ? formality : randomDummyEntry.formality,
-      }
+    //   let result = {
+    //     timestamp: new Date().toISOString(),
+    //     excerciseID: req.body.excerciseID,
+    //     filler: filler ? filler : randomDummyEntry.filler,
+    //     grammar: grammar ? grammar : randomDummyEntry.grammar,
+    //     pitch: pitch ? pitch : randomDummyEntry.pitchResult, // Corrected key name
+    //     formality: formality ? formality : randomDummyEntry.formality,
+    //   }
 
-        // Clean up the uploaded file after processing
-        fs.unlink(filePath, (err) => {
-            if (err) {
-                console.error('Failed to delete temporary upload file:', filePath, err);
-            } else {
-                console.log('Successfully deleted temporary upload file:', filePath);
-            }
-        });
+    //     // Clean up the uploaded file after processing
+    //     fs.unlink(filePath, (err) => {
+    //         if (err) {
+    //             console.error('Failed to delete temporary upload file:', filePath, err);
+    //         } else {
+    //             console.log('Successfully deleted temporary upload file:', filePath);
+    //         }
+    //     });
 
-        const finalresult: AudioAnalysisResult = {
-            success: true,
-            transcript: transcriptText,
-            timestamp: new Date().toISOString(),
-            excerciseID: req.body.excerciseID,
-            filler: filler,
-            grammar: grammar,
-            pitch: pitch,
-            formality: formality,
-        }
-        writeToFirebase(userID, sessionID, finalresult);
-        res.status(200).json(finalresult);
-        return;
+    //     const finalresult: AudioAnalysisResult = {
+    //         success: true,
+    //         transcript: transcriptText,
+    //         timestamp: new Date().toISOString(),
+    //         excerciseID: req.body.excerciseID,
+    //         filler: filler,
+    //         grammar: grammar,
+    //         pitch: pitch,
+    //         formality: formality,
+    //     }
+    //     writeToFirebase(userID, sessionID, finalresult);
+    //     res.status(200).json(finalresult);
+    //     return;
     }
 );
 

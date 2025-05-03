@@ -71,11 +71,13 @@ const writeToFirebase = async (userID, sessionID, result) => {
             .doc(userID)
             .collection('sessions')
             .doc(sessionID);
+        // Filter out undefined values from the result
+        const cleanResult = Object.fromEntries(Object.entries(result).filter(([_, value]) => value !== undefined));
         await docRef.update({
             timestamp: firebase_admin_1.default.firestore.FieldValue.serverTimestamp(),
-            ...result
+            ...cleanResult
         });
-        console.log('Successfully wrote to Firebase:', { userID, sessionID, result });
+        console.log('Successfully wrote to Firebase:', { userID, sessionID, result: cleanResult });
     }
     catch (error) {
         console.error('Error writing to Firebase:', error);
