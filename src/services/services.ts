@@ -1,14 +1,10 @@
 import { sendToService } from '../controllers/sendToService';
-
-interface ServiceConfig {
-    url: string;
-    headers: Record<string, string>;
-}
+import { ServiceConfig, ServiceResponse } from '../models/service';
 
 export async function processMultipleServices(
     filePath: string,
     services: ServiceConfig[]
-): Promise<Array<{ url: string; result: any; error?: Error }>> {
+): Promise<ServiceResponse[]> {
     if (!filePath) {
         throw new Error('File path is required');
     }

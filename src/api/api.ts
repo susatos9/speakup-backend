@@ -7,50 +7,7 @@ import { writeToFirebase } from '../config/firebase';
 import { convertSpeechToText } from '../controllers/grammar';
 import { analyzeFormality } from '../controllers/formality';
 import { filler as fillerFunction } from '../controllers/filler';
-
-interface DummyDataEntry {
-    transcript: string;
-    filler: {
-        chunks: Array<{
-            text: string;
-            timestamp: number[];
-        }>;
-    };
-    grammar: {
-        sentence_pairs: Array<{
-            corrected: string;
-            distance: number;
-            original: string;
-        }>;
-        stats: {
-            average_distance: number;
-            sentences_corrected: number;
-            total_sentences: number;
-        };
-    };
-    pitchResult: {
-        pitchAnalysis: {
-            fluctuation_score: number;
-            is_monotone: boolean;
-            pitch_range: number;
-        };
-        pitchFluctuation: Array<{
-            pitch: number;
-            timestamp: number;
-        }>;
-        silentRatio: number;
-    };
-    formality: {
-        formality_score: number;
-        formal_percent: number;
-        informal_percent: number;
-        classification: string;
-    };
-}
-
-interface DummyData {
-    [key: string]: DummyDataEntry;
-}
+import { DummyData, DummyDataEntry, AudioAnalysisResult } from '../models/audio';
 
 const getDummyData = (): DummyData => ({
     "0": {
@@ -322,8 +279,7 @@ router.post('/upload-audio', upload.single('audio'), async (req, res): Promise<v
             }
         });
 
-        const finalresult = 
-        {
+        const finalresult: AudioAnalysisResult = {
             success: true,
             transcript: transcriptText,
             timestamp: new Date().toISOString(),

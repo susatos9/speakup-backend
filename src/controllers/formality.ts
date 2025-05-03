@@ -1,12 +1,5 @@
 import axios from 'axios';
-
-interface FormalityResponse {
-    classification: string;
-    formal_percent: number;
-    formality_score: number;
-    informal_percent: number;
-    text: string;
-}
+import { FormalityResponse } from '../models/formality';
 
 export async function analyzeFormality(text: string): Promise<FormalityResponse> {
     try {
