@@ -243,22 +243,9 @@ router.post('/upload-audio', upload.single('audio'), async (req, res): Promise<v
       }
       let filler,grammar,pitch,formality;
       
-      // Use req.file.path directly as it's relative to the project root
       const filePath = req.file.path; 
 
-    //   pitch = await sendToService(
-    //     filePath,
-    //     15, // maxRetries
-    //     20000, // retryDelay
-    //     'https://pitch-615384299938.asia-southeast1.run.app/analyze', // Replace with your actual URL
-    //     {
-    //         filename: 'audio.wav',
-    //         contentType: 'multipart/form-data',
-    //     });
-    //   console.log(filler);
-    
-    //   const fileContent = fs.readFileSync(filePath); // Read the file content
-
+      // Process grammar first since formality depends on it
       grammar = await convertSpeechToText(
         filePath,
         15, // maxRetries
@@ -266,34 +253,43 @@ router.post('/upload-audio', upload.single('audio'), async (req, res): Promise<v
       );
       console.log(grammar);
 
-      filler = await fillerFunction(
-        filePath,
-        15, // maxRetries
-        20000, // retryDelay
-        );
-    
-    // Extract transcript by executing the function immediately instead of storing the function itself
-    const extractTranscript = (gr: any): string => {
-      if (gr && gr.sentence_pairs && Array.isArray(gr.sentence_pairs)) {
-        // Log the sentence pairs for debugging
-        console.log('Sentence pairs:', JSON.stringify(gr.sentence_pairs));
-        return gr.sentence_pairs.map((pair: any) => pair.original).join(' ');
-      }
-      return typeof gr === 'string' ? gr : '';
-    };
-    
-    // Get the actual transcript text by executing the function
-    const transcriptText = extractTranscript(grammar);
-    console.log('Extracted transcript:', transcriptText);
-    
-    try {
-      formality = await analyzeFormality(transcriptText);
-      console.log('Formality analysis result:', formality);
-    } catch (formalityError: any) {
-      console.warn('Formality analysis failed:', formalityError.message);
-      formality = null; // Set to null if the analysis fails
-    }
+      // Extract transcript for formality analysis
+      const extractTranscript = (gr: any): string => {
+        if (gr && gr.sentence_pairs && Array.isArray(gr.sentence_pairs)) {
+          console.log('Sentence pairs:', JSON.stringify(gr.sentence_pairs));
+          return gr.sentence_pairs.map((pair: any) => pair.original).join(' ');
+        }
+        return typeof gr === 'string' ? gr : '';
+      };
+      
+      const transcriptText = extractTranscript(grammar);
+      console.log('Extracted transcript:', transcriptText);
 
+      // Process filler, formality, and pitch in parallel
+      [filler, formality, pitch] = await Promise.all([
+        fillerFunction(
+          filePath,
+          15, // maxRetries
+          20000, // retryDelay
+        ),
+        analyzeFormality(transcriptText).catch((error) => {
+          console.warn('Formality analysis failed:', error.message);
+          return null;
+        }),
+        sendToService(
+          filePath,
+          15, // maxRetries
+          20000, // retryDelay
+          'https://pitch-615384299938.asia-southeast1.run.app/analyze',
+          {
+            filename: 'audio.wav',
+            contentType: 'multipart/form-data',
+          }
+        ).catch((error) => {
+          console.warn('Pitch analysis failed:', error.message);
+          return null;
+        })
+      ]);
 
       // how to load dummy data from a json file
       // Construct path to dummy data relative to __dirname
@@ -337,7 +333,7 @@ router.post('/upload-audio', upload.single('audio'), async (req, res): Promise<v
             pitch: pitch,
             formality: formality,
         }
-        writeToFirebase(userID, sessionID, result);
+        writeToFirebase(userID, sessionID, finalresult);
         res.status(200).json(finalresult);
         return;
     }

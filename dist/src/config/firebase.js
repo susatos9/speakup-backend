@@ -71,7 +71,7 @@ const writeToFirebase = async (userID, sessionID, result) => {
             .doc(userID)
             .collection('sessions')
             .doc(sessionID);
-        await docRef.update({
+        await docRef.set({
             timestamp: firebase_admin_1.default.firestore.FieldValue.serverTimestamp(),
             ...result
         });
