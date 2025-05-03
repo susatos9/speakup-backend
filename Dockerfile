@@ -16,13 +16,16 @@ RUN npm install && \
     npm install --save-dev @types/fluent-ffmpeg @types/node axios@latest && \
     echo '{ "compilerOptions": { "skipLibCheck": true, "noImplicitAny": false } }' > tsconfig.build.json
 
-# Copy source code
+# Copy source code and configuration files
 COPY src/ ./src/
 COPY speakup-final-firebase-adminsdk-fbsvc-6b947e7304.json ./
-COPY src/utils/dummy/dummy-data.json ./src/utils/dummy/dummy-data.json
 
 # Compile TypeScript with relaxed settings
 RUN npx tsc --skipLibCheck --noImplicitAny false
+
+# Copy dummy data JSON after compilation
+RUN mkdir -p dist/src/utils/dummy
+COPY src/utils/dummy/dummy-data.json ./dist/src/utils/dummy/
 
 # Final image
 FROM node:23-slim
@@ -37,7 +40,6 @@ WORKDIR /app
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/speakup-final-firebase-adminsdk-fbsvc-6b947e7304.json ./
-COPY --from=builder /app/dist/src/utils/dummy/dummy-data.json ./dist/src/utils/dummy/dummy-data.json
 
 # Create a non-root user
 RUN useradd -m nodeuser && \
