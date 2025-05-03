@@ -8,6 +8,7 @@ import { convertSpeechToText } from '../controllers/grammar';
 import { analyzeFormality } from '../controllers/formality';
 import { filler as fillerFunction } from '../controllers/filler';
 import { DummyData, DummyDataEntry, AudioAnalysisResult } from '../models/audio';
+import dummyData from '../utils/dummy/dummy-data';
 
 const getDummyData = (): DummyData => ({
     "0": {
@@ -189,11 +190,11 @@ router.post('/upload-audio', upload.single('audio'), async (req, res): Promise<v
     }
     
 
-    const supportedFormats = ['audio/wav', 'audio/wave', 'audio/mp3', 'audio/mpeg', 'audio/aac', 'audio/x-m4a', 'audio/x-aac', 'audio/mp4'];
+    const supportedFormats = ['audio/wav', 'audio/wave', 'audio/mp3', 'audio/mpeg', 'audio/aac', 'audio/x-m4a', 'audio/x-aac', 'audio/mp4', 'video/mp4'];
     console.log(req.file.mimetype);
     if (!req.file?.mimetype || !supportedFormats.includes(req.file.mimetype)) {
         res.status(400).json({ 
-          message: 'Unsupported audio format. Please upload WAV, MP3, AAC or M4A files.',
+          message: 'Unsupported audio format. Please upload WAV, MP3, AAC, M4A or MP4 files.',
           supportedFormats,
         });
         return;
@@ -248,18 +249,11 @@ router.post('/upload-audio', upload.single('audio'), async (req, res): Promise<v
         })
       ]);
 
-      // how to load dummy data from a json file
-      // Construct path to dummy data relative to __dirname
-      const dummyDataPath = path.join(__dirname, '../utils/dummy/dummy-data.json');
-      const dummyData = fs.readFileSync(dummyDataPath, 'utf-8');
-      const parsedData = JSON.parse(dummyData);
-      // Ensure parsedData is treated as an array or object as expected
-      // Assuming it's an object with keys "0", "1", "2" based on the file content
-      const keys = Object.keys(parsedData);
+      // Get random dummy data entry
+      const keys = Object.keys(dummyData) as Array<keyof typeof dummyData>;
       const randomIndex = Math.floor(Math.random() * keys.length);
       const randomKey = keys[randomIndex];
-      const randomDummyEntry = parsedData[randomKey];
-
+      const randomDummyEntry = dummyData[randomKey];
 
       let result = {
         timestamp: new Date().toISOString(),

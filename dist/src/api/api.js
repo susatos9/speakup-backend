@@ -218,7 +218,7 @@ router.post('/upload-audio', upload.single('audio'), async (req, res) => {
         res.status(200).json(result);
         return;
     }
-    const supportedFormats = ['audio/wav', 'audio/wave', 'audio/mp3', 'audio/mpeg', 'audio/aac', 'audio/x-m4a', 'audio/x-aac'];
+    const supportedFormats = ['audio/wav', 'audio/wave', 'audio/mp3', 'audio/mpeg', 'audio/aac', 'audio/x-m4a', 'audio/x-aac', 'audio/mp4'];
     console.log(req.file.mimetype);
     if (!req.file?.mimetype || !supportedFormats.includes(req.file.mimetype)) {
         res.status(400).json({

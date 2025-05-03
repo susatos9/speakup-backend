@@ -19,6 +19,7 @@ RUN npm install && \
 # Copy source code
 COPY src/ ./src/
 COPY speakup-final-firebase-adminsdk-fbsvc-6b947e7304.json ./
+COPY src/utils/dummy/dummy-data.json ./src/utils/dummy/dummy-data.json
 
 # Compile TypeScript with relaxed settings
 RUN npx tsc --skipLibCheck --noImplicitAny false
@@ -36,6 +37,7 @@ WORKDIR /app
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/speakup-final-firebase-adminsdk-fbsvc-6b947e7304.json ./
+COPY --from=builder /app/dist/src/utils/dummy/dummy-data.json ./dist/src/utils/dummy/dummy-data.json
 
 # Create a non-root user
 RUN useradd -m nodeuser && \
