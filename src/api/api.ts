@@ -232,7 +232,8 @@ router.post('/upload-audio', upload.single('audio'), async (req, res): Promise<v
     }
     
 
-    const supportedFormats = ['audio/wav', 'audio/wave', 'audio/mp3', 'audio/mpeg', 'audio/aac'];
+    const supportedFormats = ['audio/wav', 'audio/wave', 'audio/mp3', 'audio/mpeg', 'audio/aac', 'audio/x-m4a', 'audio/x-aac'];
+    console.log(req.file.mimetype);
     if (!req.file?.mimetype || !supportedFormats.includes(req.file.mimetype)) {
         res.status(400).json({ 
           message: 'Unsupported audio format. Please upload WAV, MP3, AAC or M4A files.',
@@ -325,10 +326,20 @@ router.post('/upload-audio', upload.single('audio'), async (req, res): Promise<v
             }
         });
 
-        res.status(200).json({
-            message: 'Audio file processed successfully',
-            data: result // Send the result back
-        });
+        const finalresult = 
+        {
+            success: true,
+            transcript: transcriptText,
+            timestamp: new Date().toISOString(),
+            excerciseID: req.body.excerciseID,
+            filler: filler,
+            grammar: grammar,
+            pitch: pitch,
+            formality: formality,
+        }
+        writeToFirebase(userID, sessionID, result);
+        res.status(200).json(finalresult);
+        return;
     }
 );
 
