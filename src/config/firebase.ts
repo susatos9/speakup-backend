@@ -76,7 +76,7 @@ export const writeToFirebase = async (userID: string, sessionID: string, result:
       Object.entries(result).filter(([_, value]) => value !== undefined)
     );
     
-    await docRef.update({
+    await docRef.set({
       timestamp: admin.firestore.FieldValue.serverTimestamp(),
       ...cleanResult
     });
