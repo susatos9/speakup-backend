@@ -1,9 +1,13 @@
 import admin, { ServiceAccount } from 'firebase-admin';
 import serviceAccount from '../../speakup-final-firebase-adminsdk-fbsvc-6b947e7304.json';
 
+// Ensure serviceAccount has the expected structure before using its properties
+const typedServiceAccount = serviceAccount as ServiceAccount & { project_id?: string };
+
 admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount as ServiceAccount),
+  credential: admin.credential.cert(typedServiceAccount),
   storageBucket: 'speakup-final', // Replace with your actual bucket name
+  projectId: typedServiceAccount.project_id, // Explicitly set the project ID
 });
 
 // Retrieve the default storage bucket:
